@@ -1,0 +1,38 @@
+default:
+  image: node:gallium-alpine
+
+lint:
+  stage: test
+  interruptible: true
+  cache:
+    - key:
+        files:
+          - yarn.lock
+      paths:
+        - node_modules/
+    - key: yarn-cache
+      paths:
+        - ".yarn"
+  script:
+    - yarn install --frozen-lockfile --cache-folder .yarn
+    - yarn tsc
+    - yarn lint:style
+    - yarn lint:script
+    # - yarn test
+  only:
+    - merge_requests
+
+build:
+  image: docker:latest
+  stage: build
+  interruptible: true
+  resource_group: build
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build --pull -t $CI_REGISTRY/$CI_PROJECT_PATH:$CI_COMMIT_REF_SLUG .
+    - docker push $CI_REGISTRY/$CI_PROJECT_PATH:$CI_COMMIT_REF_SLUG
+  only:
+    - develop
+    - staging
+    - main
